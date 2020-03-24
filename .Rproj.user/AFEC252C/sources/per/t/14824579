@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1584420999328.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1183642861",
+    "id" : "14824579",
+    "lastKnownWriteTime" : 1584436869,
+    "last_content_update" : 1584436869885,
+    "path" : "~/Documents/writings/2020/20200303_poll_aggregater/_analysis/_cho/poll_aggregator_standalone_sigma2.R",
+    "project_path" : "_cho/poll_aggregator_standalone_sigma2.R",
+    "properties" : {
+        "cursorPosition" : "32,19",
+        "scrollLine" : "22"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

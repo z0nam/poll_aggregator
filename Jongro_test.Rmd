@@ -1,0 +1,158 @@
+---
+title: "Jongro_test"
+author: "Namun Cho"
+date: "`r format(Sys.Date())`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(scales)
+library(pscl)
+library(forcats)
+library(rstan)
+
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+# ggplot 한글깨짐 대비
+library(extrafont)
+font_import()
+
+font_name = "NanumGothic"
+par(family="NanumGothic")
+```
+
+## Data import
+
+```{r data import}
+
+data <- read.table(file="_data/boondang_eul_test.txt", sep="\t", header = T)
+colnames(data) = c('startdate','durringdate','enddate','area1','area2','area3','SAE','MIN_raw','PEOPLE','JUS','UNK1','UNK2','UNK3','MIN','house','press','method','ARS','N','rate','weight','age')
+data$startdate <- as.Date(as.character(data$startdate))
+data$durringdate <- as.Date(as.character(data$durringdate))
+data$enddate <- as.Date(as.character(data$enddate))
+
+
+
+head(data)
+
+```
+
+## Initialization
+
+```{r init}
+
+START_DATE <- as.Date(as.character("2016-03-15"))
+END_DATE <- as.Date(as.character("2016-04-15"))
+
+MU_START <- 33 # 종로 35 수성갑 50 분당을 20
+MU_FINISH <- 33 # 종로 52.6 수성갑 62.3 분당을 39.85
+
+Y_MIN <- 10
+Y_MAX <- 70
+
+
+days_between_elections <- as.integer(diff(as.Date(c(START_DATE, END_DATE))))  + 1
+
+d1 <- list(mu_start = MU_START, mu_finish = MU_FINISH, n_days = days_between_elections)  # mu_start: 대략 시작시점의 민주당선호율, mu_finish: 최종 민주당 득표율
+
+# plot_results 는 공개된 버젼을 그대로 사용
+
+plot_results <- function(stan_m){
+  if(class(stan_m) != "stanfit"){
+    stop("stan_m must be an object of class stanfit, with parameters mu representing latent vote at a point in time")}
+  ex <- as.data.frame(rstan::extract(stan_m, "mu"))
+  names(ex) <- 1:d1$n_days
+  
+  p <- ex %>%
+    gather(day, value) %>%
+    mutate(day = as.numeric(day),
+           day = as.Date(day, origin = START_DATE)) %>%
+    group_by(day) %>%
+    summarise(mean = mean(value),
+              upper = quantile(value, 0.975),
+              lower = quantile(value, 0.025)) %>%
+    ggplot(aes(x = day)) +
+    labs(x = "Shaded region shows a pointwise 95% credible interval.",
+         y = "Voting intention for the MJD(%)",
+         caption = "Source: Jackman's pscl R package") + 
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3) +
+    geom_line(aes(y = mean)) + 
+    scale_y_continuous(breaks = Y_MIN:Y_MAX, sec.axis = dup_axis(name="")) + # 30:60은 보여줄 그래프의 y하한 과 y 상한임. 
+    theme(panel.grid.minor = element_blank())
+  
+  return(p)
+}
+
+```
+
+## Method L1: House Effect in Local Election
+
+- 문제: 선거구별로 조사된 조사수가 지나치게 적음
+- 예: 가장 많이 조사된 종로구조차 10건 정도이며, (20대 기준) 시행사별로는 최대 2, 최소 1임. 이 경우 제대로 된 추정이 나올지 의문. 
+
+
+## Method L2: No House Effect in Local Election
+
+- 위 방법1의 결과가 지나치게 적은 샘플수로 문제가 있을 경우의 대안으로 사용. 
+- House effect를 무시하고 Poll aggregation
+
+```{r method L2}
+
+ac <- data %>%
+  mutate(MidDate = startdate + (enddate-startdate)/2, 
+         MidDateNum = as.integer(MidDate - START_DATE),
+         p = MIN/100,
+         se_MIN = sqrt(p*(1-p)/N)*100)
+
+d2 <- list(
+  mu_start = MU_START,
+  mu_finish = MU_FINISH,
+  n_days = days_between_elections,
+  y_values = ac$MIN,
+  y_days = ac$MidDateNum,
+  y_n = nrow(ac),
+  y_se = ac$se_MIN
+)
+
+system.time({
+  stan_mod2 <- stan(file = 'oz-polls-2.stan', data = d2,
+                   control = list(max_treedepth = 20))
+}) # 510 seconds// me: 473
+
+theme_update(text=element_text(family="NanumGothic"))
+
+plot_results(stan_mod2) +
+   geom_point(data = ac, aes(x = MidDate, y = MIN)) +
+   ggtitle("Voting intention for the 민주당 between the 2016 Boondang-eul elections",
+           "Latent variable estimated with use of all firm's data") 
+
+```
+
+## Method G1: House Effect in Global Election
+
+- 전국 정당 선호도는 샘플수가 충분할 것으로 예상함. 따라서 house effect 고려 가능하다고 봄
+- No Plan B
+
+
+## Wishlist to do
+
+- 조사업체 대신 조사 방법 사용해보기. 
+
+
+## 앞으로 할 일
+
+- 현재 양당 구도. 양당구도일 경우: 두 값의 차이의 CI를 구해서 0보다 유의하게 크면 민주당 승리 0보다 작으면 제1야당 승리 (혹은 둘을 따로 그렸을 때 영역이 겹치는지 여부)
+- 겹치면 겹치는 면적이 나오고 확률 계산이 가능할 것으로 보임. 
+- 두 분포의 겹치는 면적으로 확률 도출 가능할 것 같음. 
+
+
+## 데이터 요청
+
+- 필요 데이터
+
+
+## 이후 일정

@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1584682736573.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2156347210",
+    "id" : "19A65AED",
+    "lastKnownWriteTime" : 1584684395,
+    "last_content_update" : 1584684395025,
+    "path" : "~/_analysis/_pilot/pilotRunner.R",
+    "project_path" : "_pilot/pilotRunner.R",
+    "properties" : {
+        "cursorPosition" : "10,31",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
