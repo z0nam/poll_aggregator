@@ -194,7 +194,7 @@ calculate_house_effect <- function(party_index){
   stan_mod3 <- stan(file = stan_filename, data = d3,
                        control = list(max_treedepth = 15,
                                       adapt_delta = 0.8),
-                       iter = 4000)
+                       iter = num_of_iterations)
   
   
   ## end by num of orgs

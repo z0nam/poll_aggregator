@@ -1,6 +1,6 @@
 rm(list=ls())
 
-setwd("/home/ruser/_analysis/_pilot/")
+setwd("/Users/j/Documents/writings/2020/20200303_poll_aggregater/_pilot")
 
 library(tidyverse)
 library(scales)
@@ -56,7 +56,7 @@ END_DATE <- Sys.Date() # today
 
 
 ######## STEP1: HOUSE EFFECT
-
+num_of_iterations = 10000
 source("do_some_for_calculate_house_effect.R")
 
 global_result <- data.frame()
