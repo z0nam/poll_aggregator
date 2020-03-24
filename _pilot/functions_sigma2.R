@@ -32,28 +32,47 @@
 # to make function
 
 calculate_ci_by_party <- function(party){
+  # party <- "더불어민주당" # for function test. ###############
   print(sprintf("calculate_ci_by_party: %s", party))
   #arg0: party is string for PartyList Key (i.e., "SAE", "MIN")
   
   # party_key <- paste0(party, "_raw") # raw를 쓸지 말지 고민.
-  party_key <- party
+  party_key <- paste0(party, "_fixed")
   
-  MU_START <- localdata %>% group_by(enddate) %>% summarise(a = mean(eval(parse(text=paste0(party_key)))))
+  MU_START <- region_data %>% 
+    group_by(enddate) %>% 
+    summarise(a = mean(eval(parse(text=paste0(party_key)))))
   MU_START <- MU_START$a[1] # 초기값
-  MU_FINISH = localdata %>% group_by(enddate) %>% summarise(a = mean(eval(parse(text=paste0(party_key)))))
+  MU_FINISH = region_data %>% 
+    group_by(enddate) %>% 
+    summarise(a = mean(eval(parse(text=paste0(party_key)))))
   MU_FINISH <- MU_FINISH$a[length(MU_FINISH$a)] # 마지막값
 
+  start_date <- region_data %>%
+    filter(.[party_key] != 0) %>%
+    select(startdate) %>%
+    unlist() %>%
+    as.Date(origin="1970-1-1")
+  
+  end_date <- region_data %>%
+    filter(.[party_key] != 0) %>%
+    select(enddate) %>%
+    unlist() %>%
+    as.Date(origin="1970-1-1")
+  
+  days_between_elections = as.integer(max(end_date) - min(end_date) + 3)
 # 
 #   d1 <- list(
 #     mu_start = MU_START, 
 #     mu_finish = MU_FINISH, 
 #     n_days = days_between_elections
 #   )   
-
+  # first_date = min(FULL_DATE$Date)
+  first_date <- min(end_date) - 3
   # ac_SAE 대신임
-  partydata <- localdata %>%
+  partydata <- region_data %>%
     mutate(MidDate = startdate + (enddate-startdate)/2, 
-           MidDateNum = as.integer(MidDate - START_DATE),
+           MidDateNum = as.integer(MidDate - first_date),
            p = eval(parse(text=paste0(party_key)))/100,
            se = sqrt(p*(1-p)/N)*100)
 
@@ -63,13 +82,13 @@ calculate_ci_by_party <- function(party){
     n_days = days_between_elections,
     y_values = eval(parse(text=paste0("partydata$", party_key))),
     y_days = eval(parse(text=paste0("partydata$MidDateNum"))),
-    y_n = nrow(localdata),
+    y_n = nrow(region_data),
     y_se = eval(parse(text=paste0("partydata$se")))
   )
 
   tryCatch({
     print(sprintf("stan_mod2 for %s: START", party))
-    stan_mod2 <- stan(file = 'oz-polls-2_sigma2.stan', data = d2,
+    stan_mod2 <- stan(file = 'stan/oz-polls-2_sigma1.stan', data = d2,
                       control = list(max_treedepth = 20))
     print(sprintf("stan_mod2 for %s: END, dim: %d", party, length(dim(stan_mod2))))
     },
@@ -83,8 +102,8 @@ calculate_ci_by_party <- function(party){
     }
   )
 
-  DATE = seq(START_DATE,END_DATE,1)
-  DATE = DATE[-length(DATE)]
+  DATE = seq(min(end_date)-1,max(end_date),1)
+  # DATE = DATE[-length(DATE)]
   
   if(!(exists("stan_mod2"))){
     stan_mod2 <- 999
@@ -108,7 +127,7 @@ calculate_ci_by_party <- function(party){
   print(results_1[,1:2])
   results_1 <- head(results_1, -2)
   # results_1 <- results_1 %>% select("mean", "sd")
-  Final_Results = data.frame(DATE,region,party=PartyList[party],Final_Results,results_1[,1:2])
+  Final_Results = data.frame(DATE,region,party=party,Final_Results,results_1[,1:2])
   colnames(Final_Results) <- c(
     "date",
     "region",
@@ -134,15 +153,15 @@ calculate_probability <- function(){
   print(sprintf("calculate_probability: start!"))
   region_to_search <- region
   print(sprintf("region to search: %s", region))
-  localdata <- total_result %>% filter(region==region_to_search)
-  local_party_list = unique(localdata$party)
+  region_data <- total_result %>% filter(region==region_to_search)
+  local_party_list = unique(region_data$party)
   print(sprintf("Total num of parties: %d", length(local_party_list)))
   print(local_party_list)
   days = seq(START_DATE, END_DATE-1, by="day")
   for( day in seq_along(days)){
     # posteria <- rnorm(10000, tmp_data["mu"], tmp_data["sd"])
     print(paste("Date:", days[day]))
-    tmp_data <- localdata %>% filter(date == days[day])
+    tmp_data <- region_data %>% filter(date == days[day])
     posteria <- c()
     num_win <- c()
     print("tmp_data get")

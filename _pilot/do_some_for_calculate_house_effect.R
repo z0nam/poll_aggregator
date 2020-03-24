@@ -206,8 +206,8 @@ calculate_house_effect <- function(party_index){
   house_effect_tmp <- results_1[(nrow(results_1)-2-number_of_orgs+1):(nrow(results_1)-2),1]
   house_effect_by_party <- data.frame(
     party = party_names[party_index],
-    orgs = poll_orgs,
-    house = house_effect_tmp
+    house = poll_orgs,
+    house_effect = house_effect_tmp
   )
   # write.csv(house_effect_by_party, file=sprintf("house_effect/%s.csv", party_names[party_index])) # 정당을 처음부터 저장. 
   # write.table(house_effect_by_party, file=sprintf(house_effect_output_filename), sep = ",", col.names = !file.exists(house_effect_output_filename) , append = TRUE)  # 한 파일에 long format 으로 덮어쓰기. 맨 처음 writing할때 저 파일이 있는지 체크하고 지워야함.
